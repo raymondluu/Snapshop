@@ -1,0 +1,305 @@
+/*
+ * Raymond Luu
+ * 
+ * TCSS 305 - Winter 2012
+ * Assignment 3 - SnapShop
+ */
+package snapshop.gui;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+
+import snapshop.filters.EdgeDetectFilter;
+import snapshop.filters.EdgeHighlightFilter;
+import snapshop.filters.Filter;
+import snapshop.filters.FlipHorizontalFilter;
+import snapshop.filters.FlipVerticalFilter;
+import snapshop.filters.GrayscaleFilter;
+import snapshop.filters.SharpenFilter;
+import snapshop.filters.SoftenFilter;
+import snapshop.image.Pixel;
+import snapshop.image.PixelImage;
+/**
+ * SnapShopGUI class.
+ * 
+ * @author Raymond Luu
+ * @version 4 February 2012
+ */
+public class SnapShopGUI extends JFrame
+{
+  
+  /**
+   * Array of filters.
+   */
+  private static final Filter[] FILTER_LIST = {new EdgeDetectFilter(),
+                                               new EdgeHighlightFilter(),
+                                               new FlipHorizontalFilter(),
+                                               new FlipVerticalFilter(),
+                                               new GrayscaleFilter(),
+                                               new SharpenFilter(),
+                                               new SoftenFilter()};
+  
+  /**
+   * PixelImage of the selected image.
+   */
+  private PixelImage my_image;
+  
+  /**
+   * JLabel for image.
+   */
+  private final JLabel my_label = new JLabel();
+  
+  /**
+   * ArrayList of JButtons to iterate through and enable them.
+   */
+  private final List<JButton> my_buttons = new ArrayList<JButton>();
+  
+  /**
+   * JFileChooser for open and save dialogs.
+   */
+  private final JFileChooser my_j_file_chooser = new JFileChooser();
+  
+  /**
+   * JButton for undo so that it can be enabled and disabled.
+   */
+  private final JButton my_undo = new JButton("Undo");
+  
+  private Pixel[][] my_previous;
+  
+  /**
+   * SnapShopGUI constructor.
+   */
+  public SnapShopGUI()
+  {
+    super("TCSS305 SnapShop");
+  }
+  
+  /**
+   * Starts the SnapShopGUI.
+   */
+  public void start()
+  { 
+    setLocationRelativeTo(null);
+    
+    final JPanel north_panel = createNorthPanel();
+    final JPanel south_panel = createSouthPanel();
+    final JPanel master_panel = createMasterPanel(north_panel, south_panel);
+    
+    add(master_panel);
+    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    pack();
+    setVisible(true);
+//    javax.swing.JOptionPane.showMessageDialog(null, "SnapShop placeholder");
+  }
+  
+  //Helper methods
+  
+  /**
+   * Creates the North Panel with filter buttons.
+   * 
+   * @return JPanel with the buttons.
+   */
+  private JPanel createNorthPanel()
+  {
+    final JPanel north_panel = new JPanel(new FlowLayout());
+    
+    final List<Filter> filter_list = new ArrayList<Filter>();
+    for (int i = 0; i < FILTER_LIST.length; i++)
+    {
+      filter_list.add(FILTER_LIST[i]);
+    }
+    
+    for (Filter f : filter_list)
+    {
+      north_panel.add(createFilterButton(f));
+    }
+    
+    return north_panel;
+  }
+  
+  /**
+   * Creates the South Panel with Open and Save button.
+   * 
+   * @return JPanel with the buttons.
+   */
+  private JPanel createSouthPanel()
+  {
+    final JPanel south_panel = new JPanel(new FlowLayout());
+    
+    south_panel.add(createOpenButton());
+    south_panel.add(createSaveButton());
+    south_panel.add(createUndoButton());
+    
+    return south_panel;
+  }
+  
+  /**
+   * Creates the Master Panel with all the buttons.
+   * 
+   * @param the_north_panel the north panel.
+   * @param the_south_panel the south panel.
+   * @return Master Panel.
+   */
+  private JPanel createMasterPanel(final JPanel the_north_panel, final JPanel the_south_panel)
+  {
+    final JPanel master_panel = new JPanel(new BorderLayout());
+    
+    master_panel.add(the_north_panel, BorderLayout.NORTH);
+    master_panel.add(the_south_panel, BorderLayout.SOUTH);
+    master_panel.add(my_label, BorderLayout.CENTER);
+    
+    return master_panel;
+  }
+  
+  /**
+   * Creates open button.
+   * 
+   * @return JButton for open.
+   */
+  private JButton createOpenButton()
+  {
+    final JButton b1 = new JButton("Open...");
+    
+    /**
+     * An action listener inner class.
+     * 
+     * @author Raymond Luu
+     * @version 9 February 2012
+     */
+    class AnActionListener implements ActionListener
+    {
+      
+      /**
+       * Performs an open file action after clicking.
+       * 
+       * @param the_event event.
+       */
+      @Override
+      public void actionPerformed(final ActionEvent the_event)
+      {
+        final int result = my_j_file_chooser.showOpenDialog(null);
+        if (result == JFileChooser.APPROVE_OPTION)
+        {
+          try
+          {
+            final File image_file = my_j_file_chooser.getSelectedFile();
+            my_image = PixelImage.load(image_file);
+            my_label.setIcon(new ImageIcon(my_image));
+            my_label.setHorizontalAlignment(SwingConstants.CENTER);
+            for (JButton b : my_buttons)
+            {
+              b.setEnabled(true);
+            }
+            pack();
+          }
+          catch (final IOException e)
+          {
+            JOptionPane.showMessageDialog(null,
+                                          e.getMessage(),
+                                          null,
+                                          JOptionPane.WARNING_MESSAGE);
+          }
+        }
+      }
+    }
+    
+    b1.addActionListener(new AnActionListener());
+    return b1;
+  }
+  
+  /**
+   * Creates the save button.
+   * 
+   * @return JButton for save.
+   */
+  private JButton createSaveButton()
+  {
+    final JButton b1 = new JButton("Save As...");
+    b1.setEnabled(false);
+    my_buttons.add(b1);
+    b1.addActionListener(new ActionListener()
+    {
+      @Override
+      public void actionPerformed(final ActionEvent the_event)
+      {
+        final int result = my_j_file_chooser.showSaveDialog(null);
+        if (result == JFileChooser.APPROVE_OPTION)
+        {
+          try
+          {
+            my_image.save(my_j_file_chooser.getSelectedFile());
+          }
+          catch (final IOException e)
+          {
+            JOptionPane.showMessageDialog(null,
+                                          e.getMessage(),
+                                          null,
+                                          JOptionPane.WARNING_MESSAGE);
+          }          
+        }
+      }
+    });
+    return b1;
+  }
+  
+  /**
+   * Creates the filter buttons.
+   * 
+   * @param the_filter filter.
+   * @return JButton for filter buttons.
+   */
+  private JButton createFilterButton(final Filter the_filter)
+  {
+    final JButton b1 = new JButton(the_filter.getDescription());
+    b1.setEnabled(false);
+    my_buttons.add(b1);
+    b1.addActionListener(new ActionListener()
+    {
+      @Override
+      public void actionPerformed(final ActionEvent the_event)
+      {
+        my_previous = my_image.getPixelData();
+        the_filter.filter(my_image);
+        my_label.setIcon(new ImageIcon(my_image));
+        my_undo.setEnabled(true);
+      }
+    });
+    return b1;
+  }
+  
+  /**
+   * Creates the undo button.
+   * 
+   * @return JButton for undo button.
+   */
+  private JButton createUndoButton()
+  {
+    final JButton b1 = my_undo;
+    b1.setEnabled(false);
+    b1.addActionListener(new ActionListener()
+    {
+      @Override
+      public void actionPerformed(final ActionEvent the_event)
+      {
+        my_image.setPixelData(my_previous);
+        my_label.setIcon(new ImageIcon(my_image));
+        my_undo.setEnabled(false);
+      }
+    });
+    return b1;
+  }
+}
